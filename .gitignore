@@ -1,0 +1,10 @@
+# Rust build output (applies to every chapter snapshot and final-game)
+target/
+# Shared build cache used while producing the course (keeps disk usage flat)
+.shared-target/
+# Trunk build output
+dist/
+# Editor cruft
+.vscode/
+.idea/
+*.swp

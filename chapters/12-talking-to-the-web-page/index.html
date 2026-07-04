@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basketball — Bevy on the web</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #16161e;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Control panel floats over the top-right of the canvas. Only the panel itself
+         captures clicks, so aiming/shooting anywhere else on the court is unaffected. */
+      #panel {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        width: 240px;
+        padding: 14px 14px 16px;
+        box-sizing: border-box;
+        background: rgba(24, 26, 36, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: #e7e7ef;
+        font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      }
+      /* Header button that collapses the panel down to a single compact pill. */
+      #panel #toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 6px 9px;
+        margin: 0;
+        cursor: pointer;
+        font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: #cfd0da;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 7px;
+      }
+      #panel #toggle:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      #panelBody {
+        margin-top: 12px;
+      }
+      /* Collapsed: hide everything but the toggle and let the panel shrink to it. */
+      #panel.collapsed {
+        width: auto;
+        padding: 8px;
+      }
+      #panel.collapsed #panelBody {
+        display: none;
+      }
+      #panel .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      #panel .row:last-child {
+        margin-bottom: 0;
+      }
+      #panel label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      #panel input[type="number"] {
+        width: 52px;
+      }
+      #panel input[type="text"] {
+        flex: 1;
+        min-width: 0;
+      }
+      #panel input,
+      #panel select,
+      #panel button {
+        font: inherit;
+        color: #e7e7ef;
+        background: #22242f;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        padding: 5px 7px;
+      }
+      #panel button {
+        cursor: pointer;
+        background: #f2803a;
+        color: #1a1206;
+        border: none;
+        font-weight: 600;
+        padding: 6px 10px;
+      }
+      #panel button:hover {
+        background: #ff9350;
+      }
+      #panel select {
+        width: 100%;
+      }
+      #status {
+        font-variant-numeric: tabular-nums;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      #status.over {
+        background: rgba(60, 210, 100, 0.18);
+        color: #7dffab;
+        font-weight: 600;
+      }
+      #panel .muted {
+        opacity: 0.6;
+        font-size: 12px;
+      }
+    </style>
+    <!-- Tells Trunk to compile this crate to WASM and shrink the output with wasm-opt. -->
+    <link data-trunk rel="rust" data-wasm-opt="z" />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+
+    <div id="panel">
+      <button id="toggle" aria-expanded="true" aria-controls="panelBody">
+        <span>Controls</span><span aria-hidden="true">▾</span>
+      </button>
+
+      <div id="panelBody">
+        <div class="row">
+          <label>
+            <input type="checkbox" id="limitOn" checked />
+            Stop after
+          </label>
+          <input type="number" id="limitN" min="1" max="99" value="10" />
+          <span>shots</span>
+        </div>
+
+        <div class="row">
+          <div id="status">Made: 0 · Shots: 0</div>
+        </div>
+
+        <div class="row">
+          <input type="text" id="pname" placeholder="Player name" maxlength="20" />
+          <button id="resetBtn" title="Save this run and start a new game">Save &amp; Reset</button>
+        </div>
+
+        <div class="row" style="flex-direction: column; align-items: stretch; gap: 4px">
+          <span class="muted">Session results</span>
+          <select id="results">
+            <option value="">— none yet —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Shared bridge object the Bevy/WASM side reads and writes. Created here so the
+      // panel wins the race with WASM init; the Rust side reuses it if already present.
+      const rb = (window.rustbyve = window.rustbyve || {
+        resetRequested: false,
+        shotLimit: 0,
+        score: 0,
+        attempts: 0,
+        gameOver: false,
+      });
+
+      // Results live only in this array — no localStorage — so they vanish on reload.
+      const results = [];
+      const $ = (id) => document.getElementById(id);
+
+      // Collapse/expand the whole panel down to a single "Controls" pill.
+      $("toggle").addEventListener("click", () => {
+        const collapsed = $("panel").classList.toggle("collapsed");
+        $("toggle").setAttribute("aria-expanded", String(!collapsed));
+        $("toggle").querySelector("span:last-child").textContent = collapsed ? "▸" : "▾";
+      });
+
+      // Mirror the limit control into the bridge; 0 means "no limit / endless play".
+      function applyLimit() {
+        const on = $("limitOn").checked;
+        const n = Math.max(1, Math.min(99, parseInt($("limitN").value || "10", 10)));
+        rb.shotLimit = on ? n : 0;
+        $("limitN").disabled = !on;
+      }
+      $("limitOn").addEventListener("change", applyLimit);
+      $("limitN").addEventListener("input", applyLimit);
+      applyLimit();
+
+      // Called by the Bevy side every frame it publishes state.
+      window.rbOnState = function (s) {
+        const shots = s.shotLimit > 0 ? `${s.attempts}/${s.shotLimit}` : `${s.attempts}`;
+        const status = $("status");
+        if (s.gameOver) {
+          status.textContent = `Game over — ${s.score} made in ${s.attempts}. Save & Reset ↓`;
+          status.classList.add("over");
+        } else {
+          status.textContent = `Made: ${s.score} · Shots: ${shots}`;
+          status.classList.remove("over");
+        }
+      };
+
+      // Save & Reset: record the finished run under a name (auto-named if blank),
+      // add it to the dropdown, then ask the game to start over.
+      $("resetBtn").addEventListener("click", () => {
+        if (rb.attempts > 0) {
+          const name = ($("pname").value || "").trim() || `Player ${results.length + 1}`;
+          const rec = { name, made: rb.score | 0, shots: rb.attempts | 0 };
+          results.push(rec);
+
+          const sel = $("results");
+          if (results.length === 1) sel.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.textContent = `${rec.name} — ${rec.made} made / ${rec.shots} shots`;
+          sel.appendChild(opt);
+          sel.selectedIndex = sel.options.length - 1;
+        }
+        $("pname").value = "";
+        rb.resetRequested = true;
+      });
+    </script>
+  </body>
+</html>

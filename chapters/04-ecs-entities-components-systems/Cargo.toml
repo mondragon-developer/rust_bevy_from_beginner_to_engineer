@@ -1,0 +1,15 @@
+[package]
+name = "ecs_ball"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.16"
+
+# Build our own code lightly but dependencies fully optimized, so dev
+# rebuilds stay fast while Bevy itself (the slow part) runs at full speed.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
