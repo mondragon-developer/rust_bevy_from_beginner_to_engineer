@@ -2,6 +2,18 @@
 
 This file is the production blueprint for the course. It is not a lesson — learners should start at [README.md](README.md).
 
+## Status
+
+**Complete and published** (2026-07-04). All 15 chapters (00–14) written in English and Spanish, every code snapshot compiled and verified, all screenshots captured from real builds, `final-game/` building, and README media in place (`hero-swish.gif` highlight + `gameplay-session.mp4` full session, both from a real recorded game).
+
+Production log:
+
+- 2026-07-04 — Repo scaffolded; chapters 00–02 written and verified (format approved on ch00).
+- 2026-07-04 — Part II (03–06): first Bevy window (324 crates / 4m 36s measured), ECS scene, movement, first WASM build (3m 33s measured).
+- 2026-07-04 — Part III (07–11): court, shooting mechanic, physics/collisions, scoring + swish, sessions — all converging on the reference game's code.
+- 2026-07-04 — Part IV (12–14): wasm-bindgen panel bridge (ch12 = reference code verbatim), refactor into modules/plugins/system sets (became `final-game/`), release optimization measured 66.4 MB → 17.3 MB.
+- 2026-07-04 — Published to GitHub; gameplay media recorded and integrated; MIT license.
+
 ## Locked decisions
 
 | Decision | Choice |
