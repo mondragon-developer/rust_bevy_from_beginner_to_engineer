@@ -4,9 +4,9 @@
 
 *Léelo en: [English](README.md) | **Español***
 
-![Partida del juego de baloncesto terminado](assets/hero-gameplay.gif)
+![Partida del juego de baloncesto terminado](assets/hero-swish.gif)
 
-*▶ [Mira una sesión de juego completa de un minuto (video)](assets/rust-bevy-video.mp4)*
+*▶ [Mira una sesión de juego completa de un minuto (video)](assets/gameplay-session.mp4)*
 
 Este es un curso práctico y gratuito. Empiezas sin nada instalado y terminas con un juego completo — tiro con carga progresiva, gravedad y rebotes reales, puntuación y sesiones de juego — escrito en **Rust** con el motor de juegos **Bevy**, compilado a **WebAssembly** y jugable en cualquier navegador moderno.
 

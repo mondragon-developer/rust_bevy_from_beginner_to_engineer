@@ -4,9 +4,9 @@
 
 *Read this in: **English** | [Español](README.es.md)*
 
-![Gameplay of the finished basketball game](assets/hero-gameplay.gif)
+![Gameplay of the finished basketball game](assets/hero-swish.gif)
 
-*▶ [Watch a full one-minute game session (video)](assets/rust-bevy-video.mp4)*
+*▶ [Watch a full one-minute game session (video)](assets/gameplay-session.mp4)*
 
 This is a free, hands-on course. You start with nothing installed and finish with a complete game — hold-to-charge shooting, real gravity and bounce physics, scoring, and game sessions — written in **Rust** with the **Bevy** game engine, compiled to **WebAssembly**, and playable in any modern browser.
 
